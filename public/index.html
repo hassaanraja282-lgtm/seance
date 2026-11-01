@@ -7,7 +7,17 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+  <!-- Atmosphere layers (decorative, no content) -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="moon"></div>
+    <div class="stars" id="stars-layer"></div>
+    <div class="fog fog-1"></div>
+    <div class="fog fog-2"></div>
+    <div class="fog fog-3"></div>
+  </div>
+
   <header>
+    <div class="candle-glow" aria-hidden="true"></div>
     <h1>🕯️ Séance</h1>
     <p class="tagline">Resurrect dead URLs via the Wayback Machine</p>
   </header>
@@ -33,8 +43,11 @@
     <h2><span class="step-num">2</span> Dig up the remains</h2>
     <p class="step-desc">Select a snapshot from the haunting timeline.</p>
     <div id="snapshots-loading" class="loading hidden">
-      <div class="planchette"></div>
-      <p>Digging up the remains…</p>
+      <div class="ouija-loading">
+        <div class="planchette-svg" aria-hidden="true"></div>
+        <div class="ouija-strip">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z &nbsp; YES NO</div>
+      </div>
+      <p class="loading-status">Asking the Wayback Machine…</p>
     </div>
     <div id="snapshots-result" aria-live="polite"></div>
     <div id="snapshot-picker" class="snapshot-picker hidden"></div>
@@ -45,8 +58,11 @@
   <section id="step-resurrect" class="step hidden">
     <h2><span class="step-num">3</span> Hold the séance</h2>
     <div id="resurrect-loading" class="loading hidden">
-      <div class="planchette"></div>
-      <p>Summoning…</p>
+      <div class="ouija-loading">
+        <div class="planchette-svg" aria-hidden="true"></div>
+        <div class="ouija-strip">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z &nbsp; YES NO</div>
+      </div>
+      <p class="loading-status">Summoning the spirits…</p>
     </div>
     <div id="resurrect-result" aria-live="polite"></div>
   </section>

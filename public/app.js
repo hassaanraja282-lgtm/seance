@@ -5,6 +5,8 @@
 // ---------------------------------------------------------------------------
 let selectedTimestamp = null;
 let snapshotsData = null;
+let currentGraveyardUrl = null;
+let graveyardBestTs = null;
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -34,21 +36,103 @@ async function api(path) {
 }
 
 // ---------------------------------------------------------------------------
+// Loading status rotation
+// ---------------------------------------------------------------------------
+let statusRotationId = null;
+
+function startStatusRotation(element, phrases) {
+  let idx = 0;
+  element.textContent = phrases[0];
+  statusRotationId = setInterval(() => {
+    idx = (idx + 1) % phrases.length;
+    element.style.opacity = '0';
+    setTimeout(() => {
+      element.textContent = phrases[idx];
+      element.style.opacity = '1';
+    }, 200);
+  }, 2000);
+}
+
+function stopStatusRotation() {
+  if (statusRotationId) {
+    clearInterval(statusRotationId);
+    statusRotationId = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Smooth scroll helper
+// ---------------------------------------------------------------------------
+function scrollToElement(selector) {
+  const target = $(selector);
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cause-of-death text
+// ---------------------------------------------------------------------------
+function causeOfDeathText(data) {
+  const { cause, httpStatus, detail } = data;
+  if (cause === 'possessed') {
+    // detail is "Redirected to hostname" — extract hostname, avoid duplication
+    const hostname = detail ? detail.replace(/^Redirected to\s+/i, '') : null;
+    const target = hostname || 'another host';
+    return `Cause of death: body-snatched → ${target}`;
+  }
+  if (cause === '404') return 'Cause of death: 404 Not Found';
+  if (cause === '5xx') return `Cause of death: ${httpStatus || '5xx'} Server Error`;
+  if (cause === 'dns_failure') return 'Cause of death: DNS — domain vanished';
+  if (cause === 'connection_refused') return 'Cause of death: connection refused';
+  if (cause === 'timeout') return 'Cause of death: timeout';
+  if (cause === 'network_error') return 'Cause of death: network error';
+  if (httpStatus) return `Cause of death: ${httpStatus}`;
+  return `Cause of death: ${cause || 'unknown'}`;
+}
+
+// ---------------------------------------------------------------------------
+// Heartbeat SVG for alive pages
+// ---------------------------------------------------------------------------
+function heartbeatSvg() {
+  return `<svg class="heartbeat-line" viewBox="0 0 60 28" aria-hidden="true">
+    <polyline points="0,14 12,14 16,4 22,24 28,14 38,14 42,8 48,20 52,14 60,14"
+      fill="none" stroke="#80d080" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+      <animate attributeName="stroke-dashoffset" from="0" to="120" dur="1.5s" repeatCount="indefinite" />
+    </polyline>
+  </svg>`;
+}
+
+// ---------------------------------------------------------------------------
 // Step 1: Pulse check
 // ---------------------------------------------------------------------------
 async function checkPulse(url) {
   const resultDiv = $('#pulse-result');
-  resultDiv.innerHTML = '<div class="loading"><div class="planchette"></div><p>Checking for a pulse…</p></div>';
+  stopStatusRotation();
+  resultDiv.innerHTML = `<div class="loading"><div class="ouija-loading">
+    <div class="planchette-svg"></div>
+    <div class="ouija-strip">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z &nbsp; YES NO</div>
+  </div><p class="loading-status">Summoning the spirits…</p></div>`;
+
+  const statusEl = resultDiv.querySelector('.loading-status');
+  startStatusRotation(statusEl, [
+    'Summoning the spirits…',
+    'Reading the pulse…',
+    'Listening for a heartbeat…',
+  ]);
 
   try {
     const data = await api(`/api/pulse?url=${encodeURIComponent(url)}`);
+    stopStatusRotation();
     renderPulseResult(data);
     if (data.status === 'DEAD' || data.status === 'ALIVE') {
       $('#step-snapshots').classList.remove('hidden');
+      setTimeout(() => scrollToElement('#step-snapshots'), 100);
       fetchSnapshots(url);
     }
   } catch (err) {
-    resultDiv.innerHTML = `<div class="pulse-card dead"><p class="pulse-status dead">⚠️ ${err.message}</p></div>`;
+    stopStatusRotation();
+    resultDiv.innerHTML = `<div class="pulse-card alive"><p class="pulse-status dead">⚠️ ${err.message}</p></div>`;
   }
 }
 
@@ -56,18 +140,32 @@ function renderPulseResult(data) {
   const resultDiv = $('#pulse-result');
   if (data.status === 'ALIVE') {
     resultDiv.innerHTML = `<div class="pulse-card alive">
-      <p class="pulse-status alive">👻 The page lives!</p>
-      <p class="pulse-detail">HTTP ${data.httpStatus} — still breathing.</p>
+      ${heartbeatSvg()}
+      <div>
+        <p class="pulse-status alive">👻 The page lives!</p>
+        <p class="pulse-detail">HTTP ${data.httpStatus} — still breathing.</p>
+      </div>
     </div>`;
   } else {
-    const causeText = data.cause === 'possessed'
-      ? `Body-snatched! Redirected to ${data.detail || 'another host'}`
-      : `Cause of death: ${data.cause}`;
-    resultDiv.innerHTML = `<div class="pulse-card dead">
-      <p class="pulse-status dead">🪦 R.I.P.</p>
-      <p class="pulse-detail">${causeText}${data.httpStatus ? ` (HTTP ${data.httpStatus})` : ''}</p>
+    const causeLine = causeOfDeathText(data);
+    resultDiv.innerHTML = `<div class="tombstone-card">
+      <div class="tombstone-shape">
+        <p class="tombstone-rip">R.I.P.</p>
+        <p class="tombstone-url">${escapeHtml(data.url)}</p>
+        <p class="tombstone-cause">${causeLine}</p>
+      </div>
+      <div class="tombstone-grass"></div>
     </div>`;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Escape HTML utility
+// ---------------------------------------------------------------------------
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,10 +182,19 @@ async function fetchSnapshots(url) {
   picker.classList.add('hidden');
   resurrectBtn.classList.add('hidden');
 
+  stopStatusRotation();
+  const statusEl = loading.querySelector('.loading-status');
+  startStatusRotation(statusEl, [
+    'Asking the Wayback Machine…',
+    'The table is shaking…',
+    'Consulting the archive spirits…',
+  ]);
+
   try {
     const data = await api(`/api/snapshots?url=${encodeURIComponent(url)}`);
-    snapshotsData = data;
+    stopStatusRotation();
     loading.classList.add('hidden');
+    snapshotsData = data;
 
     if (data.total === 0) {
       result.innerHTML = '<p class="pulse-detail">No remains found in the archive. The spirits are silent.</p>';
@@ -107,9 +214,14 @@ async function fetchSnapshots(url) {
 
     // Render snapshot picker
     renderSnapshotPicker(data.snapshots);
+
+    // Auto-select golden era snapshot
+    autoSelectSnapshot(url, data);
+
     picker.classList.remove('hidden');
     resurrectBtn.classList.remove('hidden');
   } catch (err) {
+    stopStatusRotation();
     loading.classList.add('hidden');
     result.innerHTML = `<p class="pulse-detail">⚠️ ${err.message}</p>`;
   }
@@ -138,16 +250,24 @@ function renderTimeline(timeline) {
       'data-year': entry.year,
       style: `height: ${Math.max(heightPct, 5)}%`,
       title: `${entry.year}: ${entry.count} snapshots`,
+      tabindex: '0',
+      role: 'button',
+      'aria-label': `${entry.year}: ${entry.count} snapshots`,
     });
     bar.innerHTML = `
       <span class="timeline-bar-count">${entry.count}</span>
       <span class="timeline-bar-label">${entry.year}</span>
     `;
     bar.addEventListener('click', () => {
-      // Jump to the first snapshot of this year in the picker
       const firstSnap = snapshotsData.snapshots.find((s) => s.timestamp.startsWith(String(entry.year)));
       if (firstSnap) {
         selectSnapshot(firstSnap.timestamp);
+      }
+    });
+    bar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        bar.click();
       }
     });
     timelineDiv.appendChild(bar);
@@ -160,24 +280,86 @@ function renderSnapshotPicker(snapshots) {
   const picker = $('#snapshot-picker');
   picker.innerHTML = '';
 
-  // Show a scrollable list, latest first
   const list = el('div', { class: 'snapshot-list' });
-  const sorted = [...snapshots].reverse(); // latest first
+  const sorted = [...snapshots].reverse();
 
   for (const snap of sorted) {
     const item = el('div', {
       class: 'snapshot-item',
       'data-ts': snap.timestamp,
+      tabindex: '0',
+      role: 'button',
+      'aria-label': `Snapshot from ${formatDate(snap.timestamp)}, HTTP ${snap.status}`,
     });
     item.innerHTML = `
       <span class="snapshot-date">${formatDate(snap.timestamp)}</span>
       <span class="snapshot-status">HTTP ${snap.status}</span>
     `;
     item.addEventListener('click', () => selectSnapshot(snap.timestamp));
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectSnapshot(snap.timestamp);
+      }
+    });
     list.appendChild(item);
   }
 
   picker.appendChild(list);
+}
+
+// ---------------------------------------------------------------------------
+// Auto-select golden era snapshot
+// ---------------------------------------------------------------------------
+function autoSelectSnapshot(url, data) {
+  // Check if this URL matches a graveyard entry
+  if (graveyardBestTs && url === currentGraveyardUrl) {
+    // Find the snapshot closest to bestTs
+    const target = graveyardBestTs;
+    const closest = findClosestSnapshot(data.snapshots, target);
+    if (closest) {
+      selectSnapshot(closest.timestamp);
+      return;
+    }
+  }
+
+  // For other URLs, pick snapshot closest to midpoint between first and last
+  if (data.firstSeen && data.lastSeen && data.snapshots.length > 0) {
+    const midpoint = midpointTimestamp(data.firstSeen, data.lastSeen);
+    const closest = findClosestSnapshot(data.snapshots, midpoint);
+    if (closest) {
+      selectSnapshot(closest.timestamp);
+      return;
+    }
+  }
+
+  // Fallback: select the latest
+  if (data.snapshots.length > 0) {
+    selectSnapshot(data.snapshots[data.snapshots.length - 1].timestamp);
+  }
+}
+
+function midpointTimestamp(first, last) {
+  // Treat as numbers, take midpoint
+  const f = parseInt(first, 10);
+  const l = parseInt(last, 10);
+  const mid = Math.floor((f + l) / 2);
+  return String(mid).padStart(14, '0');
+}
+
+function findClosestSnapshot(snapshots, target) {
+  if (!snapshots || snapshots.length === 0) return null;
+  const targetNum = parseInt(target, 10);
+  let closest = snapshots[0];
+  let minDiff = Math.abs(parseInt(closest.timestamp, 10) - targetNum);
+  for (const snap of snapshots) {
+    const diff = Math.abs(parseInt(snap.timestamp, 10) - targetNum);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = snap;
+    }
+  }
+  return closest;
 }
 
 function selectSnapshot(ts) {
@@ -186,6 +368,11 @@ function selectSnapshot(ts) {
   document.querySelectorAll('.snapshot-item').forEach((item) => {
     item.classList.toggle('selected', item.getAttribute('data-ts') === ts);
   });
+  // Scroll the selected item into view in the picker
+  const selectedItem = document.querySelector('.snapshot-item.selected');
+  if (selectedItem) {
+    selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
   // Highlight in timeline
   const year = ts.slice(0, 4);
   document.querySelectorAll('.timeline-bar').forEach((bar) => {
@@ -208,13 +395,24 @@ async function doResurrect() {
   loading.classList.remove('hidden');
   result.innerHTML = '';
 
+  stopStatusRotation();
+  const statusEl = loading.querySelector('.loading-status');
+  startStatusRotation(statusEl, [
+    'Summoning the spirits…',
+    'The table is shaking…',
+    'Asking the Wayback Machine…',
+  ]);
+
   try {
     const params = new URLSearchParams({ url });
     if (selectedTimestamp) params.set('ts', selectedTimestamp);
     const data = await api(`/api/resurrect?${params}`);
+    stopStatusRotation();
     loading.classList.add('hidden');
     renderResurrectResult(data);
+    setTimeout(() => scrollToElement('#step-resurrect'), 100);
   } catch (err) {
+    stopStatusRotation();
     loading.classList.add('hidden');
     result.innerHTML = `<p class="pulse-detail">⚠️ ${err.message}</p>`;
   }
@@ -224,11 +422,17 @@ function renderResurrectResult(data) {
   const resultDiv = $('#resurrect-result');
   resultDiv.innerHTML = '';
 
-  // Spirit message
+  const p = data.provenance || {};
+  const risenDate = p.snapshotDate || formatDate(data.ts);
+
+  // Title
+  resultDiv.innerHTML = `<h3 class="reborn-title">Risen from ${escapeHtml(risenDate)}</h3>`;
+
+  // Spirit message (ghostly speech bubble)
   const spirit = el('div', { class: 'spirit-message' });
   spirit.innerHTML = `
     <p class="label">🔮 Spirit Message</p>
-    <p>${data.spiritMessage}</p>
+    <p class="spirit-text">${escapeHtml(data.spiritMessage)}</p>
   `;
   resultDiv.appendChild(spirit);
 
@@ -236,34 +440,34 @@ function renderResurrectResult(data) {
   const epitaph = el('div', { class: 'epitaph' });
   epitaph.innerHTML = `
     <p class="label">R.I.P.</p>
-    <p>${data.epitaph}</p>
+    <p>${escapeHtml(data.epitaph)}</p>
   `;
   resultDiv.appendChild(epitaph);
 
   // Search queries (Where did it go?)
   const queries = el('div', { class: 'search-queries' });
   const links = (data.searchQueries || []).map((q) =>
-    `<a href="https://duckduckgo.com/?q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer">${q}</a>`,
+    `<a href="https://duckduckgo.com/?q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer">${escapeHtml(q)}</a>`,
   ).join('');
   queries.innerHTML = `
-    <p class="label">🔍 Where did it go?</p>
+    <span class="label">🔍 Where did it go?</span>
     <div class="search-query-links">${links}</div>
   `;
   resultDiv.appendChild(queries);
 
-  // Actions
+  // Action buttons
   const actions = el('div', { class: 'reborn-actions' });
 
   // Download button
   const dlBtn = el('button', { type: 'button' }, '⬇ Download as standalone HTML');
   dlBtn.addEventListener('click', () => {
     const blob = new Blob([data.downloadHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = el('a', { href: url, download: `${data.title || 'reborn-page'}.html` });
+    const dlUrl = URL.createObjectURL(blob);
+    const a = el('a', { href: dlUrl, download: `${(data.title || 'reborn-page').replace(/[^a-z0-9]+/gi, '-')}.html` });
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(dlUrl);
   });
   actions.appendChild(dlBtn);
 
@@ -281,6 +485,18 @@ function renderResurrectResult(data) {
   });
   actions.appendChild(citeBtn);
 
+  // Open in Wayback button
+  if (p.archiveLink) {
+    const waybackLink = el('a', {
+      href: p.archiveLink,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'button secondary',
+      style: 'text-decoration: none; display: inline-flex; align-items: center;',
+    }, '🔗 Open in Wayback');
+    actions.appendChild(waybackLink);
+  }
+
   resultDiv.appendChild(actions);
 
   // Reborn page in sandboxed iframe
@@ -293,7 +509,6 @@ function renderResurrectResult(data) {
   container.appendChild(iframe);
   resultDiv.appendChild(container);
 
-  // Set iframe content via srcdoc
   iframe.srcdoc = data.content;
 }
 
@@ -313,12 +528,26 @@ async function loadGraveyard() {
   try {
     const data = await api('/api/graveyard');
     for (const grave of data.graves) {
-      const stone = el('div', { class: 'tombstone' });
-      stone.innerHTML = `<h3>${grave.name}</h3><p>${grave.description}</p>`;
+      const stone = el('button', {
+        class: 'grave-tombstone',
+        type: 'button',
+        'aria-label': `${grave.name} — ${grave.description}`,
+      });
+      stone.innerHTML = `
+        <div class="grave-tombstone-stone">
+          <h3>${escapeHtml(grave.name)}</h3>
+          <p class="grave-tombstone-years">${grave.born}–${grave.died}</p>
+          <p class="grave-tombstone-epitaph">${escapeHtml(grave.description)}</p>
+        </div>
+        <div class="grave-tombstone-grass"></div>
+      `;
       stone.addEventListener('click', () => {
         $('#url-input').value = grave.url;
         $('#step-snapshots').classList.add('hidden');
         $('#step-resurrect').classList.add('hidden');
+        // Track which graveyard entry was clicked for golden-era selection
+        currentGraveyardUrl = grave.url;
+        graveyardBestTs = grave.bestTs || null;
         checkPulse(grave.url);
       });
       grid.appendChild(stone);
@@ -326,24 +555,54 @@ async function loadGraveyard() {
   } catch {
     // If API fails, try inline graveyard
     const fallback = [
-      { name: 'GeoCities', url: 'http://www.geocities.com/', description: 'A sprawling necropolis of personal homepages.' },
-      { name: 'Google Reader', url: 'http://www.google.com/reader/', description: 'The beloved RSS reader, laid to rest in 2013.' },
-      { name: 'Yahoo Answers', url: 'https://answers.yahoo.com/', description: 'A chaotic oracle of dubious wisdom.' },
-      { name: 'Google+', url: 'https://plus.google.com/', description: 'The ghost of social networks past.' },
-      { name: 'AltaVista', url: 'http://www.altavista.com/', description: 'Once the king of search, now a spectral memory.' },
-      { name: 'Orkut', url: 'http://www.orkut.com/', description: "Google's first social experiment, haunting the web." },
+      { name: 'GeoCities', url: 'http://www.geocities.com/', description: 'A sprawling necropolis of personal homepages.', born: 1995, died: 2009, bestTs: '20090801000000' },
+      { name: 'Google Reader', url: 'http://www.google.com/reader/', description: 'The beloved RSS reader, laid to rest in 2013.', born: 2005, died: 2013, bestTs: '20120601000000' },
+      { name: 'Yahoo Answers', url: 'https://answers.yahoo.com/', description: 'A chaotic oracle of dubious wisdom.', born: 2005, died: 2021, bestTs: '20200601000000' },
+      { name: 'Google+', url: 'https://plus.google.com/', description: 'The ghost of social networks past.', born: 2011, died: 2019, bestTs: '20150601000000' },
+      { name: 'AltaVista', url: 'http://www.altavista.com/', description: 'Once the king of search, now a spectral memory.', born: 1995, died: 2013, bestTs: '19990508000000' },
+      { name: 'Orkut', url: 'http://www.orkut.com/', description: "Google's first social experiment, haunting the web.", born: 2004, died: 2014, bestTs: '20130601000000' },
     ];
     for (const grave of fallback) {
-      const stone = el('div', { class: 'tombstone' });
-      stone.innerHTML = `<h3>${grave.name}</h3><p>${grave.description}</p>`;
+      const stone = el('button', {
+        class: 'grave-tombstone',
+        type: 'button',
+        'aria-label': `${grave.name} — ${grave.description}`,
+      });
+      stone.innerHTML = `
+        <div class="grave-tombstone-stone">
+          <h3>${escapeHtml(grave.name)}</h3>
+          <p class="grave-tombstone-years">${grave.born}–${grave.died}</p>
+          <p class="grave-tombstone-epitaph">${escapeHtml(grave.description)}</p>
+        </div>
+        <div class="grave-tombstone-grass"></div>
+      `;
       stone.addEventListener('click', () => {
         $('#url-input').value = grave.url;
         $('#step-snapshots').classList.add('hidden');
         $('#step-resurrect').classList.add('hidden');
+        currentGraveyardUrl = grave.url;
+        graveyardBestTs = grave.bestTs || null;
         checkPulse(grave.url);
       });
       grid.appendChild(stone);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stars generation
+// ---------------------------------------------------------------------------
+function generateStars() {
+  const layer = $('#stars-layer');
+  if (!layer) return;
+  const numStars = 60;
+  for (let i = 0; i < numStars; i++) {
+    const star = el('div', { class: 'star' });
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.top = `${Math.random() * 60}%`;
+    star.style.animationDelay = `${Math.random() * 3}s`;
+    star.style.animationDuration = `${2 + Math.random() * 3}s`;
+    layer.appendChild(star);
   }
 }
 
@@ -354,9 +613,10 @@ function init() {
   $('#pulse-btn').addEventListener('click', () => {
     const url = $('#url-input').value.trim();
     if (!url) return;
-    // Reset downstream steps
     $('#step-snapshots').classList.add('hidden');
     $('#step-resurrect').classList.add('hidden');
+    currentGraveyardUrl = null;
+    graveyardBestTs = null;
     checkPulse(url);
   });
 
@@ -364,7 +624,6 @@ function init() {
     doResurrect();
   });
 
-  // Enter key in URL input
   $('#url-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       $('#pulse-btn').click();
@@ -379,6 +638,7 @@ function init() {
     checkPulse(urlParam);
   }
 
+  generateStars();
   loadGraveyard();
 }
 
