@@ -28,12 +28,12 @@ const GRAVEYARD = [
     bestTs: '20090801000000',
   },
   {
-    name: 'Google Reader',
-    url: 'http://www.google.com/reader/',
-    description: 'The beloved RSS reader, laid to rest in 2013. Its ghost still feeds the faithful.',
-    born: 2005,
-    died: 2013,
-    bestTs: '20120601000000',
+    name: 'Google Wave',
+    url: 'http://wave.google.com/',
+    description: 'The future of email, once. It crashed on the shore in 2012; only the foam remains.',
+    born: 2009,
+    died: 2012,
+    bestTs: '20090701000000',
   },
   {
     name: 'Yahoo Answers',
@@ -60,12 +60,12 @@ const GRAVEYARD = [
     bestTs: '19990508000000',
   },
   {
-    name: 'Orkut',
-    url: 'http://www.orkut.com/',
-    description: 'Google\'s first social experiment, haunting the web since 2014. Its communities are dust.',
-    born: 2004,
-    died: 2014,
-    bestTs: '20130601000000',
+    name: 'NCSA Mosaic',
+    url: 'http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/',
+    description: 'The browser that woke the web. Its home page faded in 1997; we can still hear it boot.',
+    born: 1993,
+    died: 1997,
+    bestTs: '19970101000000',
   },
 ];
 

@@ -1,5 +1,7 @@
 # Séance 🔮🕯️
 
+**Live:** https://seance-a6ag.onrender.com · **Kiroween 2026 — Resurrection category** · MIT
+
 Resurrect dead URLs via the Internet Archive's Wayback Machine.
 
 Paste a broken link, check if it's still alive, dig up archived snapshots, and
@@ -25,8 +27,8 @@ Built for the **Kiroween 2026 hackathon**, category "Resurrection."
 - **Downloadable HTML** — self-contained standalone document with inline CSS and a
   provenance footer (original URL, snapshot date, archive link).
 - **Copy citation** — copies a citation string to the clipboard.
-- **Graveyard demos** — 6 famous dead/changed pages (GeoCities, Google Reader,
-  Yahoo Answers, Google+, AltaVista, Orkut) as one-click demos.
+- **Graveyard demos** — 6 famous dead/changed pages (GeoCities, Google Wave,
+  Yahoo Answers, Google+, AltaVista, NCSA Mosaic) as one-click demos.
 - **SSRF protection** — URL validation rejects private IPs, loopback, link-local,
   metadata endpoints, and non-http(s) schemes.
 - **Deep-linkable** — `/?url=...` auto-runs the pulse check.
@@ -71,6 +73,12 @@ developers. The workflow used:
 
 The agent worked through tasks T1–T15 sequentially, writing code and tests, running
 `npm test` after each task, and fixing failures before moving on.
+
+### After launch: spec-first bug fixes (T16, T17)
+- **T16** — production showed dead domains being rejected as "unsafe" (the SSRF guard treated a DNS failure as an attack). The fix started in the spec (new AC-1.5, a design addendum splitting `validateUrlSyntax` from `validateUrlForFetch`), then code and tests. Kiro drafted the new validators; the free-tier service throttled the remaining runs, so the wiring and tests were finished by hand and recorded in `tasks.md`.
+- **T17** — the T16 diagnostic log line revealed Render's resolver returns IPv6 addresses ending in `::`, which the IPv6 expander mis-parsed. Fixed with regression tests.
+
+135 tests (unit + property-based) pass with `npm test`.
 
 ## Architecture
 

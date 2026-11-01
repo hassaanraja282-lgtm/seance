@@ -561,11 +561,11 @@ async function loadGraveyard() {
     // If API fails, try inline graveyard
     const fallback = [
       { name: 'GeoCities', url: 'http://www.geocities.com/', description: 'A sprawling necropolis of personal homepages.', born: 1995, died: 2009, bestTs: '20090801000000' },
-      { name: 'Google Reader', url: 'http://www.google.com/reader/', description: 'The beloved RSS reader, laid to rest in 2013.', born: 2005, died: 2013, bestTs: '20120601000000' },
+      { name: 'Google Wave', url: 'http://wave.google.com/', description: 'The future of email, once. Crashed on the shore in 2012.', born: 2009, died: 2012, bestTs: '20090701000000' },
       { name: 'Yahoo Answers', url: 'https://answers.yahoo.com/', description: 'A chaotic oracle of dubious wisdom.', born: 2005, died: 2021, bestTs: '20200601000000' },
       { name: 'Google+', url: 'https://plus.google.com/', description: 'The ghost of social networks past.', born: 2011, died: 2019, bestTs: '20150601000000' },
       { name: 'AltaVista', url: 'http://www.altavista.com/', description: 'Once the king of search, now a spectral memory.', born: 1995, died: 2013, bestTs: '19990508000000' },
-      { name: 'Orkut', url: 'http://www.orkut.com/', description: "Google's first social experiment, haunting the web.", born: 2004, died: 2014, bestTs: '20130601000000' },
+      { name: 'NCSA Mosaic', url: 'http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/', description: 'The browser that woke the web. Faded in 1997.', born: 1993, died: 1997, bestTs: '19970101000000' },
     ];
     for (const grave of fallback) {
       const stone = el('button', {
