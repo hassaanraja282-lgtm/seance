@@ -58,3 +58,13 @@ test('pulse: www <-> apex redirect is not a body-snatching', async () => {
   const p = await checkPulse('http://www.friendster.com/', { dnsLookup, fetch });
   assert.equal(p.result.status, 'ALIVE');
 });
+
+test('IPv6 expansion: compressed public addresses are not "malformed" (prod bug)', async () => {
+  const { isBlockedIP } = await import('../src/url.js');
+  for (const ip of ['2001:4860:4827:7700::', '2001:4860:4829:400::', '2607:f8b0:4005:80b::2004', '::ffff:8.8.8.8', '2001:db8::1:0:0:1']) {
+    assert.equal(isBlockedIP(ip, 6), false, ip);
+  }
+  for (const ip of ['::1', 'fe80::1', 'fd00::', 'fc00::abcd', '::ffff:127.0.0.1', '1::2::3', 'gggg::1']) {
+    assert.equal(isBlockedIP(ip, 6), true, ip);
+  }
+});

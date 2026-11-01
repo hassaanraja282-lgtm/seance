@@ -110,3 +110,12 @@ write application code beyond what a task asks for; keep changes scoped.
   _Refs: AC-1.2, AC-1.3, AC-2.1, AC-3.1_
   _Note: Kiro drafted `validateUrlForFetch`/`validateUrlSyntax`; the free-tier
   service throttled the remaining runs, so wiring + tests were finished by hand._
+
+- [x] **T17 — Production fix: compressed IPv6 answers flagged "malformed"**
+  The T16 server log line (`[SSRF] Blocked resolution: www.google.com ->
+  2001:4860:4827:7700:: (malformed)`) showed Render's resolver returns IPv6
+  addresses ending in `::`, which `expandIPv6` mis-parsed, so Google/YouTube
+  URLs were rejected. Rewrote expansion around `split('::')` with hex-group
+  validation, and handle IPv4-mapped addresses in WHATWG hex form
+  (`::ffff:7f00:1`). Regression tests in `test/t16-validation.test.js`.
+  _Refs: AC-1.2, AC-1.3_ (hand-fixed; Kiro free tier was throttling)

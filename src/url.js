@@ -223,6 +223,13 @@ function blockedIPv6Category(ip) {
   // fe80::/10 — first 10 bits: first byte 0xfe, top 2 bits of second byte are 10
   if (firstByte === 0xfe && (secondByte & 0xc0) === 0x80) return 'link-local (fe80::/10)';
 
+  // IPv4-mapped in hex form (::ffff:7f00:1 — how WHATWG URL normalizes ::ffff:127.0.0.1)
+  const g = expanded.split(':');
+  if (g.length === 8 && g.slice(0, 5).every((x) => /^0+$/.test(x)) && g[5] === 'ffff') {
+    const hi = parseInt(g[6], 16); const lo = parseInt(g[7], 16);
+    return blockedIPv4Category(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
+
   // IPv4-mapped (::ffff:x.x.x.x)
   const v4match = addr.match(/::ffff:(\d+\.\d+\.\d+\.\d+)/);
   if (v4match) {
@@ -244,24 +251,22 @@ function expandIPv6(addr) {
     return addr; // good enough for prefix checks above
   }
 
-  // Handle :: compression
-  const parts = addr.split(':');
-  if (parts.length > 8) return null;
-
-  // Find the empty span from ::
-  const emptyIdx = parts.indexOf('');
-  if (emptyIdx !== -1) {
-    // Count how many full groups we have
-    const fullGroups = parts.filter((p) => p !== '').length;
-    const missing = 8 - fullGroups;
-    // Replace the empty group(s) with the right number of zero groups
-    parts.splice(emptyIdx, 1, ...Array(missing).fill('0'));
-    // If there were two consecutive empties (::), remove the second empty
-    if (parts[emptyIdx + 1] === '') {
-      parts.splice(emptyIdx + 1, 1);
-    }
+  // Handle :: compression (leading, middle or trailing). Bug fix: trailing "::"
+  // (e.g. 2001:4860:4827:7700::, seen in production DNS on Render) used to be
+  // classified as malformed and blocked.
+  const halves = addr.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  let parts;
+  if (halves.length === 2) {
+    const missing = 8 - head.length - tail.length;
+    if (missing < 1) return null;
+    parts = [...head, ...Array(missing).fill('0'), ...tail];
+  } else {
+    parts = head;
   }
-
+  if (parts.some((p) => !/^[0-9a-f]{1,4}$/.test(p))) return null;
   if (parts.length !== 8) return null;
 
   // Pad each group to 4 hex digits
