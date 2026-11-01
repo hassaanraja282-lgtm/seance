@@ -275,6 +275,26 @@ button.secondary:hover {
   background: var(--bg-elevated);
 }
 
+a.button.secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+a.button.secondary:hover {
+  background: var(--bg-elevated);
+  color: var(--accent-bright);
+}
+
 /* -------------------------------------------------------------------------
    Results / hidden
    ------------------------------------------------------------------------- */
@@ -484,7 +504,7 @@ button.secondary:hover {
   align-items: flex-end;
   gap: 2px;
   margin: 1.5rem 0 2rem;
-  min-height: 120px;
+  height: 90px;
   padding: 0.5rem 0.5rem 2rem;
   overflow-x: auto;
   position: relative;
@@ -493,7 +513,6 @@ button.secondary:hover {
 .timeline-bar {
   flex: 1;
   min-width: 24px;
-  min-height: 4px;
   background: var(--accent-dim);
   border-radius: 4px 4px 0 0;
   position: relative;

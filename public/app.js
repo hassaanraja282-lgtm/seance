@@ -244,11 +244,16 @@ function renderTimeline(timeline) {
   const timelineDiv = el('div', { class: 'timeline' });
 
   for (const entry of timeline) {
-    const heightPct = (entry.count / maxCount) * 100;
+    // Fixed pixel heights: min 6px, max 90px, proportional to count
+    const minPx = 6;
+    const maxPx = 90;
+    const heightPx = maxCount > 0
+      ? Math.round(minPx + (entry.count / maxCount) * (maxPx - minPx))
+      : minPx;
     const bar = el('div', {
       class: 'timeline-bar',
       'data-year': entry.year,
-      style: `height: ${Math.max(heightPct, 5)}%`,
+      style: `height: ${heightPx}px`,
       title: `${entry.year}: ${entry.count} snapshots`,
       tabindex: '0',
       role: 'button',

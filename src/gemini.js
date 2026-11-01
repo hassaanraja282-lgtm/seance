@@ -81,22 +81,49 @@ function extractKeywords(text, count) {
 
 /**
  * Build a deterministic 2-sentence extractive spirit message.
+ * De-duplicates repeated phrases and caps at 2 sentences / 280 chars.
  * @param {string} text
  * @returns {string}
  */
 function buildSpiritMessage(text) {
   const sentences = splitSentences(text);
   if (sentences.length === 0) return 'No readable text could be extracted from the remains.';
-  if (sentences.length === 1) return sentences[0] + '.';
+  if (sentences.length === 1) return truncateSentences([sentences[0]], 2, 280);
 
   const freq = buildWordFreq(text);
   // Score each sentence, pick top 2 by score
   const scored = sentences.map((s, i) => ({ sentence: s, score: scoreSentence(s, freq), index: i }));
-  scored.sort((a, b) => b.score - a.score);
 
-  // Take top 2, but preserve original order
-  const topTwo = scored.slice(0, 2).sort((a, b) => a.index - b.index);
-  return topTwo.map((s) => s.sentence).join(' ');
+  // Sort by score descending, pick top sentences, then de-duplicate
+  const byScore = [...scored].sort((a, b) => b.score - a.score);
+  const selected = [];
+  const seen = new Set();
+  for (const item of byScore) {
+    const normalized = item.sentence.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    selected.push(item);
+    if (selected.length >= 2) break;
+  }
+
+  // Preserve original order
+  selected.sort((a, b) => a.index - b.index);
+  return truncateSentences(selected.map((s) => s.sentence), 2, 280);
+}
+
+/**
+ * Join up to maxSentences sentences and cap total length at maxChars.
+ * @param {string[]} sentences
+ * @param {number} maxSentences
+ * @param {number} maxChars
+ * @returns {string}
+ */
+function truncateSentences(sentences, maxSentences, maxChars) {
+  let result = sentences.slice(0, maxSentences).join(' ');
+  if (result.length > maxChars) {
+    result = result.slice(0, maxChars - 3).trimEnd() + '...';
+  }
+  return result;
 }
 
 /**
@@ -255,7 +282,7 @@ function buildGeminiPrompt(text, title) {
   const truncated = (text || '').slice(0, 5000);
   const titlePart = title ? `Title: ${title}\n` : '';
   return `You are analyzing an archived web page. Provide a summary in this exact JSON format:
-{"spiritMessage": "exactly 2 sentences summarizing the page content", "epitaph": "one line describing what this page was about", "searchQueries": ["query 1", "query 2", "query 3"]}
+{"spiritMessage": "exactly 2 sentences summarizing what the page contained and who it was for, written as the page's ghost speaking in first person (gently spooky, but every fact must come from the content)", "epitaph": "one short gravestone line (max 12 words) describing what this page was", "searchQueries": ["3 specific web search queries that would find where this content lives today or its modern successor"]}
 
 ${titlePart}Content:
 ${truncated}

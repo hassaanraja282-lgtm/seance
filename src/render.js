@@ -70,21 +70,25 @@ function pageCss() {
       --border: #2a2a4a;
       --link: #b8c9ff;
       --link-hover: #d4dcff;
+      --parchment: #f0e8d8;
+      --parchment-text: #3a3a2a;
+      --parchment-link: #8b2020;
+      --parchment-link-hover: #a52828;
     }
     *, *::before, *::after { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
       font-family: Georgia, 'Times New Roman', serif;
-      background: var(--bg);
-      color: var(--text);
+      background: var(--parchment);
+      color: var(--parchment-text);
       line-height: 1.6;
       max-width: 800px;
       margin: 0 auto;
       padding: 1.5rem;
     }
     h1, h2, h3, h4, h5, h6 {
-      color: var(--accent-bright);
+      color: var(--parchment-text);
       margin-top: 1.5em;
       margin-bottom: 0.5em;
       line-height: 1.3;
@@ -93,22 +97,23 @@ function pageCss() {
     h2 { font-size: 1.5rem; }
     h3 { font-size: 1.25rem; }
     p { margin: 0.5em 0 1em; }
-    a { color: var(--link); text-decoration: underline; }
-    a:hover { color: var(--link-hover); }
+    a { color: var(--parchment-link); text-decoration: underline; }
+    a:hover { color: var(--parchment-link-hover); }
     ul, ol { padding-left: 1.5em; }
-    li { margin: 0.25em 0; }
+    li { margin: 0.25em 0; font-size: 1rem; }
     blockquote {
-      border-left: 3px solid var(--accent);
+      border-left: 3px solid var(--parchment-link);
       padding-left: 1em;
       margin: 1em 0;
-      color: var(--text-muted);
+      color: #6a6a4a;
       font-style: italic;
     }
     pre {
-      background: var(--card-bg);
+      background: #e8e0d0;
       padding: 1em;
       border-radius: 4px;
       overflow-x: auto;
+      color: var(--parchment-text);
     }
     img {
       max-width: 100%;
@@ -116,21 +121,28 @@ function pageCss() {
       border-radius: 4px;
       margin: 0.5em 0;
     }
+    img:empty {
+      display: none;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
       margin: 1em 0;
     }
     td, th {
-      border: 1px solid var(--border);
+      border: 1px solid #c8c0b0;
       padding: 0.5em;
+    }
+    th {
+      background: #e8e0d0;
+      font-weight: bold;
     }
     .provenance {
       margin-top: 2em;
       padding: 1em;
-      border-top: 2px solid var(--border);
+      border-top: 2px solid #c8c0b0;
       font-size: 0.9rem;
-      color: var(--text-muted);
+      color: #6a6a4a;
     }
     .provenance a { word-break: break-all; }
   `;
