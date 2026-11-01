@@ -143,3 +143,33 @@ test('result includes the URL', async () => {
   assert.ok(result.ok);
   assert.equal(result.result.url, 'https://example.com/page?q=1');
 });
+
+test('redirect to different host → DEAD with cause possessed', async () => {
+  const fetch = async (url, opts) => ({
+    status: 200,
+    ok: true,
+    url: 'https://different-host.com/page',  // different host → possessed
+    text: async () => '',
+    headers: new Map(),
+  });
+  const result = await checkPulse('https://example.com/', { fetch });
+  assert.ok(result.ok);
+  assert.equal(result.result.status, 'DEAD');
+  assert.equal(result.result.cause, 'possessed');
+  assert.equal(result.result.httpStatus, 200);
+  assert.ok(result.result.detail.includes('different-host.com'));
+});
+
+test('redirect to same host stays ALIVE', async () => {
+  const fetch = async (url, opts) => ({
+    status: 200,
+    ok: true,
+    url: 'https://example.com/different-path',  // same host → alive
+    text: async () => '',
+    headers: new Map(),
+  });
+  const result = await checkPulse('https://example.com/', { fetch });
+  assert.ok(result.ok);
+  assert.equal(result.result.status, 'ALIVE');
+  assert.equal(result.result.httpStatus, 200);
+});

@@ -7,8 +7,61 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <h1>Séance</h1>
-  <p>Resurrect dead URLs via the Wayback Machine.</p>
+  <header>
+    <h1>🕯️ Séance</h1>
+    <p class="tagline">Resurrect dead URLs via the Wayback Machine</p>
+  </header>
+
+  <!-- Step 1: Check for a pulse -->
+  <section id="step-pulse" class="step">
+    <h2><span class="step-num">1</span> Check for a pulse</h2>
+    <div class="pulse-form">
+      <input
+        type="url"
+        id="url-input"
+        placeholder="https://example.com/dead-page"
+        aria-label="URL to check"
+        autocomplete="off"
+      >
+      <button id="pulse-btn" type="button">Check for a pulse</button>
+    </div>
+    <div id="pulse-result" class="result" aria-live="polite"></div>
+  </section>
+
+  <!-- Step 2: Dig up the remains -->
+  <section id="step-snapshots" class="step hidden">
+    <h2><span class="step-num">2</span> Dig up the remains</h2>
+    <p class="step-desc">Select a snapshot from the haunting timeline.</p>
+    <div id="snapshots-loading" class="loading hidden">
+      <div class="planchette"></div>
+      <p>Digging up the remains…</p>
+    </div>
+    <div id="snapshots-result" aria-live="polite"></div>
+    <div id="snapshot-picker" class="snapshot-picker hidden"></div>
+    <button id="resurrect-btn" class="hidden" type="button">Hold the séance</button>
+  </section>
+
+  <!-- Step 3: Hold the séance -->
+  <section id="step-resurrect" class="step hidden">
+    <h2><span class="step-num">3</span> Hold the séance</h2>
+    <div id="resurrect-loading" class="loading hidden">
+      <div class="planchette"></div>
+      <p>Summoning…</p>
+    </div>
+    <div id="resurrect-result" aria-live="polite"></div>
+  </section>
+
+  <!-- Graveyard -->
+  <section id="graveyard" class="graveyard">
+    <h2>🪦 The Graveyard</h2>
+    <p class="step-desc">Famous dead pages. Click a tombstone to begin.</p>
+    <div id="graveyard-grid" class="graveyard-grid"></div>
+  </section>
+
+  <footer>
+    <p>Séance — built for the Kiroween 2026 hackathon.</p>
+  </footer>
+
   <script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkPulse } from './src/pulse.js';
 import { getSnapshots } from './src/snapshots.js';
+import { resurrect } from './src/resurrect.js';
+import { getGraveyard } from './src/graveyard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,8 +45,23 @@ app.get('/api/snapshots', async (req, res) => {
   res.json(outcome.result);
 });
 
-app.get('/api/resurrect', (req, res) => {
-  res.status(501).json({ error: 'Not implemented' });
+app.get('/api/resurrect', async (req, res) => {
+  const url = req.query.url;
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'Missing required parameter: url' });
+  }
+  const ts = req.query.ts;
+  const outcome = await resurrect(url, ts);
+  if (!outcome.ok) {
+    const code = outcome.code ?? 502;
+    return res.status(code).json({ error: outcome.reason });
+  }
+  res.json(outcome.result);
+});
+
+// --- Graveyard demos ---
+app.get('/api/graveyard', (req, res) => {
+  res.json({ graves: getGraveyard() });
 });
 
 // --- 404 for unknown API routes ---------------------------------------------

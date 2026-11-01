@@ -34,65 +34,65 @@ write application code beyond what a task asks for; keep changes scoped.
   200 for both alive and dead; 400 for invalid/unsafe.
   _Refs: AC-1.1, AC-1.2, AC-1.3, AC-1.4_
 
-- [ ] **T6 — Snapshots endpoint (`src/snapshots.js` + `server.js` route)**
+- [x] **T6 — Snapshots endpoint (`src/snapshots.js` + `server.js` route)**
   Query CDX API (`web.archive.org/cdx/search/cdx?url=...&output=json`), parse
   timestamps/status/digest, compute first/last/total and per-year timeline.
   Return 200 with empty array when none; 502 when archive unreachable.
   _Refs: AC-2.1, AC-2.2, AC-2.3, AC-2.4_
 
-- [ ] **T7 — HTML sanitization (`src/sanitize.js` + tests)**
+- [x] **T7 — HTML sanitization (`src/sanitize.js` + tests)**
   Using `node-html-parser`: remove script/iframe/object/embed/frame/applet/meta
   http-equiv/base/link/noscript; strip `on*` and `style` attributes; drop
   `javascript:`/`vbscript:` URIs. Property-based tests per design.md properties.
   _Refs: AC-3.1, AC-5.2_
 
-- [ ] **T8 — Content extraction + image rewriting (`src/extract.js` + tests)**
+- [x] **T8 — Content extraction + image rewriting (`src/extract.js` + tests)**
   From the sanitized tree, extract title, headings, paragraphs, lists, links
   (rewrite external links with `rel="noopener noreferrer"`), and images
   (rewrite `src` to `web.archive.org/web/{ts}id_/{original}`). Property-based
   tests verify the extractor invariants.
   _Refs: AC-3.1_
 
-- [ ] **T9 — Deterministic fallback summarizer (`src/gemini.js` fallback path)**
+- [x] **T9 — Deterministic fallback summarizer (`src/gemini.js` fallback path)**
   Build a 2-sentence extractive `spiritMessage`, a single-line `epitaph`, and
   exactly 3 `searchQueries` from extracted text, deterministically. Tests
   assert the summarizer correctness properties.
   _Refs: AC-4.2_
 
-- [ ] **T10 — Gemini integration (`src/gemini.js` Gemini path)**
+- [x] **T10 — Gemini integration (`src/gemini.js` Gemini path)**
   When `GEMINI_API_KEY` set, call the Gemini generate-content API for summary,
   epitaph, and 3 queries. On any failure (missing key, HTTP error, bad JSON),
   fall back to the deterministic path. Never log or expose the key. Tests stub
   `fetch` to simulate success and failure.
   _Refs: AC-4.1, AC-4.2, AC-7.1_
 
-- [ ] **T11 — Render reborn page + standalone HTML (`src/render.js`)**
+- [x] **T11 — Render reborn page + standalone HTML (`src/render.js`)**
   Assemble semantic, mobile-friendly HTML from extracted content + provenance
   footer. Produce `downloadHtml` as a self-contained, sanitized document
   including the provenance footer. Same renderer used for in-app and download.
   _Refs: AC-3.2, AC-5.1, AC-5.2_
 
-- [ ] **T12 — Resurrect endpoint wiring (`src/resurrect.js` + `server.js` route)**
+- [x] **T12 — Resurrect endpoint wiring (`src/resurrect.js` + `server.js` route)**
   Orchestrate validate → cache lookup → fetch archived HTML → sanitize → extract
   → summarize (Gemini or fallback) → render. Cache by `{url, ts}`. Return 400 for
   invalid URL/timestamp, 502 when archived fetch fails. Response shape per
   design.md.
   _Refs: AC-3.1, AC-3.3, AC-3.4, AC-4.1, AC-4.2, AC-5.1_
 
-- [ ] **T13 — Graveyard demos (`src/graveyard.js` + `public/`)**
+- [x] **T13 — Graveyard demos (`src/graveyard.js` + `public/`)**
   Define exactly 6 famous dead/changed pages with name + spooky description and a
   verifiable dead-or-changed status. Expose via an endpoint or inline in the
   page; clicking prefills the URL and triggers a pulse check.
   _Refs: AC-6.1_
 
-- [ ] **T14 — Frontend app + spooky UI (`public/index.html`, `app.js`, `styles.css`)**
+- [x] **T14 — Frontend app + spooky UI (`public/index.html`, `app.js`, `styles.css`)**
   Build the paste box, pulse/snapshots/resurrect flows, tombstone cards,
   haunting timeline, reborn page view, "Download as standalone HTML" link, and
   copy-citation button. Dark graveyard theme, candle/fog/planchette animation
   with `prefers-reduced-motion` fallback. WCAG AA contrast.
   _Refs: AC-3.2, AC-5.3, AC-6.1_
 
-- [ ] **T15 — Full test pass + render.yaml + README polish**
+- [x] **T15 — Full test pass + render.yaml + README polish**
   Run `npm test` green (unit + property tests, no network). Confirm
   `render.yaml` free-tier web service config and optional `GEMINI_API_KEY` env
   var. Add a short README with run/deploy instructions.

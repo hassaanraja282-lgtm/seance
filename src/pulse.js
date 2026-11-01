@@ -42,6 +42,28 @@ export async function checkPulse(rawUrl, opts = {}) {
     clearTimeout(timer);
 
     const status = response.status;
+
+    // Check for "possessed" — redirect to a different host (body-snatched)
+    if (response.url) {
+      try {
+        const finalUrl = new URL(response.url);
+        if (finalUrl.hostname !== url.hostname) {
+          return {
+            ok: true,
+            result: {
+              url: url.href,
+              status: 'DEAD',
+              cause: 'possessed',
+              httpStatus: status,
+              detail: `Redirected to ${finalUrl.hostname}`,
+            },
+          };
+        }
+      } catch {
+        // If we can't parse the final URL, ignore and continue
+      }
+    }
+
     if (status >= 200 && status < 400) {
       return {
         ok: true,
@@ -168,7 +190,7 @@ function classifyFetchError(err, href) {
  * @typedef {Object} PulseResult
  * @property {string} url
  * @property {'ALIVE'|'DEAD'} status
- * @property {string} [cause] - '404' | '5xx' | 'dns_failure' | 'connection_refused' | 'timeout' | 'network_error'
+ * @property {string} [cause] - '404' | '5xx' | 'dns_failure' | 'connection_refused' | 'timeout' | 'network_error' | 'possessed'
  * @property {number|null} [httpStatus]
  * @property {string} [detail]
  */
