@@ -51,3 +51,10 @@ test('T16: pulse detail is a short status string, never the body', async () => {
   const p = await checkPulse('https://example.com/gone', { dnsLookup, fetch });
   assert.equal(p.result.detail, '404 Not Found');
 });
+
+test('pulse: www <-> apex redirect is not a body-snatching', async () => {
+  const dnsLookup = async () => [{ address: '93.184.216.34', family: 4 }];
+  const fetch = async () => { const r = new Response('ok', { status: 200 }); Object.defineProperty(r, 'url', { value: 'https://friendster.com/' }); return r; };
+  const p = await checkPulse('http://www.friendster.com/', { dnsLookup, fetch });
+  assert.equal(p.result.status, 'ALIVE');
+});

@@ -55,7 +55,8 @@ export async function checkPulse(rawUrl, opts = {}) {
     if (response.url) {
       try {
         const finalUrl = new URL(response.url);
-        if (finalUrl.hostname !== url.hostname) {
+        const bare = (h) => h.toLowerCase().replace(/^www\./, '');
+        if (bare(finalUrl.hostname) !== bare(url.hostname)) {
           return {
             ok: true,
             result: {
