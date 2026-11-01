@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "security-review",
+  "description": "When a src/**/*.js file is edited, review the change against .kiro/steering/security.md for SSRF, sanitization, and API key handling violations.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the file that was just edited against the security rules in .kiro/steering/security.md. Check specifically for:\n\n1. SSRF protection: Does any user-provided URL pass through validation (scheme allowlist http/https only, no userinfo, private/loopback/link-local IP blocking, DNS resolution check before fetch)? If the file handles URLs, confirm validation is applied before any outbound fetch.\n2. HTML sanitization: If the file processes archived HTML, confirm that script/iframe/object/embed/frame/applet/meta-http-equiv/base/link/noscript tags are removed, on* attributes are stripped, style attributes are removed, and javascript:/vbscript: URIs are dropped.\n3. API key handling: If the file references GEMINI_API_KEY, confirm it is read lazily from process.env, never hardcoded, never logged, and never included in response bodies or error messages.\n4. Timeouts: Every outbound fetch must use an AbortController with a timeout (default 8s). Confirm no unbounded network waits.\n\nReport any violations found with the file path, line reference, and a suggested fix. If no violations are found, confirm the file is compliant."
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "seance-builder",
+  "description": "Builds the Séance project by implementing tasks from .kiro/specs/seance/tasks.md one at a time, following all steering docs.",
+  "prompt": "You are the Séance builder agent. Your job is to implement the Séance project — a web app that resurrects dead URLs via the Wayback Machine.\n\n## Workflow\n\n1. Read .kiro/specs/seance/tasks.md to find the next unchecked task (a line starting with '- [ ]').\n2. Read the relevant steering docs (.kiro/steering/*.md) and spec docs (.kiro/specs/seance/*.md) for context on that task.\n3. Implement ONLY that one task. Do not write application code beyond what the task asks for. Keep changes scoped.\n4. Run `npm test` to verify your work. Fix any failures before moving on.\n5. Tick the checkbox in tasks.md for the completed task (change '- [ ]' to '- [x]').\n6. Move to the next unchecked task and repeat until all tasks are done.\n\n## Rules\n\n- Follow all steering docs: tech.md (stack, conventions, testing), security.md (SSRF, sanitization, key handling), structure.md (file layout), product.md (voice and tone).\n- Use only the allowed dependencies: express and node-html-parser. Do not add any other runtime dependencies.\n- ES modules everywhere (\"type\": \"module\"). 2-space indent, single quotes, trailing commas, semicolons.\n- Every outbound fetch must have an AbortController-based timeout.\n- Validate all user input before doing work. Never leak stack traces to the client.\n- Never expose or log GEMINI_API_KEY.\n- Write tests for non-trivial logic. Tests use node:test and node:assert/strict. Tests must be hermetic (no network).\n- When all tasks are complete, run `npm test` one final time to confirm everything is green.",
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash"
+  ],
+  "resources": [
+    "file://.kiro/steering/**/*.md",
+    "file://.kiro/specs/seance/**/*.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo '=== GIT STATUS ==='; git status --short 2>/dev/null || echo '(not a git repo)'; echo '=== NEXT UNCHECKED TASK ==='; grep -m1 -n '\\- \\[ \\]' .kiro/specs/seance/tasks.md || echo 'All tasks are checked — verify the codebase is complete.'"
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "npm test --silent 2>&1 | tail -n 15 || true"
+      }
+    ],
+    "stop": [
+      {
+        "command": "grep -rnE 'AIza[0-9A-Za-z_-]{20,}' --exclude-dir=node_modules --exclude-dir=.git . && echo 'SECRET FOUND' || echo 'no secrets'"
+      }
+    ]
+  }
+}

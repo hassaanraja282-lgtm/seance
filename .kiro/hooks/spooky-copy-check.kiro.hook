@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "spooky-copy-check",
+  "description": "When a public/**/*.html or public/**/*.js file is edited, check that UI copy matches product.md voice/tone and that accessibility rules (WCAG AA contrast, prefers-reduced-motion) hold.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "public/**/*.html",
+      "public/**/*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the file that was just edited for voice, tone, and accessibility compliance per .kiro/steering/product.md:\n\n1. Voice and tone: The theme is playful-spooky but clear. The metaphor must never obscure function. A first-time visitor should know what to do without help. Check that status copy uses the established terms: 'Checking for a pulse...', 'Digging up the remains...', 'Summoning...', 'The page lives!', 'R.I.P. — cause of death: 404'. Dead pages are 'corpses', archived snapshots are 'remains', rendering is 'resurrection'/'summoning'. Error messages should be honest and human ('The spirits are silent' for upstream failures), never raw stack traces.\n2. Contrast: Verify that any color values in the file (or referenced styles.css) meet WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text). Flag any low-contrast combinations.\n3. Reduced motion: Confirm that any animations or transitions are wrapped in a `@media (prefers-reduced-motion: no-preference)` block or equivalent, so that users with `prefers-reduced-motion: reduce` see a static, accessible experience.\n\nReport any issues found with specific references. If compliant, confirm briefly."
+  }
+}

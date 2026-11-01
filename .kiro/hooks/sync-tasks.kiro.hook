@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "sync-tasks",
+  "description": "User-triggered hook that reconciles .kiro/specs/seance/tasks.md checkboxes with what actually exists in the codebase.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Reconcile the task checklist in .kiro/specs/seance/tasks.md with the actual state of the codebase. For each task T1 through T15:\n\n1. Check whether the files referenced by the task exist (e.g., T1 expects package.json, render.yaml, LICENSE; T2 expects src/url.js and test/url.test.js; T4 expects server.js; etc.).\n2. Check whether the functionality described in the task is present and non-trivial (not just an empty stub).\n3. If the task is fully implemented, ensure its checkbox is marked [x] in tasks.md. If it is not implemented or only partially done, ensure its checkbox remains [ ].\n4. Report a summary table of all 15 tasks with their current checkbox state and whether your assessment agrees (MATCH or MISMATCH), plus any changes you made to tasks.md."
+  }
+}

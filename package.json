@@ -1,0 +1,16 @@
+{
+  "name": "seance",
+  "version": "1.0.0",
+  "description": "Resurrect dead URLs via the Wayback Machine",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-html-parser": "^7.0.1"
+  },
+  "license": "MIT"
+}

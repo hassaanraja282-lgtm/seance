@@ -1,0 +1,9 @@
+Implement the Séance spec now: work through .kiro/specs/seance/tasks.md T1 to T15 in order, ticking each checkbox as you finish it. Run `npm install` for express and node-html-parser first. Follow all steering docs.
+Extra implementation notes:
+- Gemini: use the native REST endpoint https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent with header `x-goog-api-key` (never in the URL/query string), `generationConfig.responseMimeType: "application/json"`. Model list from env GEMINI_MODELS, default "gemini-3.6-flash,gemini-3.5-flash-lite,gemini-2.5-flash"; try each in order, 20s timeout each, then deterministic fallback. Response JSON includes `source: "gemini:<model>"` or `source: "fallback"`.
+- Wayback fetches: send a descriptive User-Agent ("Seance/1.0 (+https://github.com/hassaanraja282-lgtm/seance)"), 15s timeout, follow redirects. CDX: use `collapse=timestamp:6` (one per month) and `filter=statuscode:200`, `limit` 500; if a URL has no exact matches, try without "www." / with trailing slash.
+- /api/resurrect without ts uses the latest 200 snapshot.
+- Frontend: single page, sections "1 Check for a pulse", "2 Dig up the remains" (year timeline bar chart built with divs + snapshot picker), "3 Hold the séance" (reborn page rendered inside a sandboxed iframe via srcdoc, plus spirit message, epitaph, 'where did it go?' search links to DuckDuckGo, Download HTML, Copy citation). Planchette loading animation while waiting. Graveyard: 6 tombstones of famous dead sites (pick well-known ones whose original URL now fails or redirects away, e.g. GeoCities homepages, old Google Reader, Vine, Yahoo Answers, etc.; give each a full archived URL that has snapshots).
+- Deep-linkable: `/?url=...` auto-runs the pulse check.
+- When everything passes, write README.md (what, why, how Kiro was used — mention steering, spec, agent hooks, custom agent; run/deploy) and render.yaml.
+Do not commit. Run `npm test` at the end and report results.

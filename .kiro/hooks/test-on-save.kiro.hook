@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "test-on-save",
+  "description": "When a source file (src/**/*.js or server.js) is edited, ask the agent to run npm test and fix any failures.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.js",
+      "server.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was just edited. Run `npm test` and check the output. If there are any failures, fix them while following the coding conventions in .kiro/steering/tech.md (ES modules, 2-space indent, single quotes, trailing commas, semicolons, async/await). If tests pass, confirm with a brief summary. Do not modify files unrelated to the test failures."
+  }
+}
