@@ -1,9 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getSnapshots } from '../src/snapshots.js';
-
-// Re-export parseCdxResponse for unit testing
-export { parseCdxResponse };
+import { getSnapshots, parseCdxResponse } from '../src/snapshots.js';
 
 // ---------------------------------------------------------------------------
 // Mock CDX response helpers

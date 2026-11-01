@@ -141,7 +141,7 @@ async function queryCdx(fetchFn, url, timeout) {
  * @param {any[][]} data - CDX JSON rows (first row is header)
  * @returns {SnapshotsResult}
  */
-function parseCdxResponse(url, data) {
+export function parseCdxResponse(url, data) {
   // CDX JSON: first row is column headers, subsequent rows are data
   if (!Array.isArray(data) || data.length === 0) {
     return {
