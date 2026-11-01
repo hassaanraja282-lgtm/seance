@@ -97,3 +97,16 @@ write application code beyond what a task asks for; keep changes scoped.
   `render.yaml` free-tier web service config and optional `GEMINI_API_KEY` env
   var. Add a short README with run/deploy instructions.
   _Refs: AC-7.2, AC-7.4_
+
+- [x] **T16 — Production fix: dead domains were rejected as "unsafe"**
+  Split `validateUrl` into `validateUrlSyntax` (no DNS; used by snapshots +
+  resurrect, which only fetch web.archive.org) and `validateUrlForFetch`
+  (syntax + DNS; used by pulse). In pulse, ENOTFOUND/EAI_AGAIN → 200
+  `{status: DEAD, cause: dns_failure}`; resolution into a blocked range → 400
+  plus one server log line with the blocked category. Pulse `detail` is a short
+  status string ("404 Not Found"), never body HTML. Strip IPv6 brackets before
+  `isIP()` (caught by the new T16 tests). Tests: `test/t16-validation.test.js`
+  (incl. property test that syntax validation is synchronous / DNS-free).
+  _Refs: AC-1.2, AC-1.3, AC-2.1, AC-3.1_
+  _Note: Kiro drafted `validateUrlForFetch`/`validateUrlSyntax`; the free-tier
+  service throttled the remaining runs, so wiring + tests were finished by hand._

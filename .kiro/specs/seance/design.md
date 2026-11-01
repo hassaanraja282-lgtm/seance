@@ -195,3 +195,11 @@ For any extracted content with non-empty text:
 2. `epitaph` is a single line (no newlines) and is non-empty.
 3. `searchQueries` is an array of exactly 3 non-empty strings.
 4. Output depends only on the input text (same input ⇒ same output).
+
+## Addendum (T16): two validation levels
+| Function | DNS? | Used by | On DNS failure |
+|---|---|---|---|
+| `validateUrlSyntax(raw)` | no | `/api/snapshots`, `/api/resurrect` (only web.archive.org is fetched) | n/a |
+| `validateUrlForFetch(raw)` | yes | `/api/pulse` (fetches the target) | `{ok:false, reason:'dns_failure'}` → pulse answers 200 DEAD `dns_failure` |
+
+Correctness property added: for any syntactically valid public http(s) URL, `validateUrlSyntax` returns synchronously and performs no I/O.

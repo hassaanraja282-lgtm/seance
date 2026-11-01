@@ -1,4 +1,5 @@
-import { validateUrl } from './url.js';
+import { validateUrlForFetch } from './url.js';
+import { STATUS_CODES } from 'node:http';
 
 /**
  * Default timeout for live fetch (ms).
@@ -17,8 +18,15 @@ export async function checkPulse(rawUrl, opts = {}) {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   const timeout = opts.timeout ?? PULSE_TIMEOUT;
 
-  const validation = await validateUrl(rawUrl);
+  const validation = await validateUrlForFetch(rawUrl, opts.dnsLookup ? { dnsLookup: opts.dnsLookup } : {});
   if (!validation.ok) {
+    if (validation.reason === 'dns_failure') {
+      // A vanished domain is a death, not a bad request (T16).
+      return {
+        ok: true,
+        result: { url: String(rawUrl).trim(), status: 'DEAD', cause: 'dns_failure', httpStatus: null, detail: 'Domain no longer resolves' },
+      };
+    }
     return { ok: false, reason: validation.reason };
   }
 
@@ -86,14 +94,9 @@ export async function checkPulse(rawUrl, opts = {}) {
       cause = String(status);
     }
 
-    let detail = '';
-    try {
-      detail = await response.text();
-      // Truncate detail for safety
-      if (detail.length > 200) detail = detail.slice(0, 200);
-    } catch {
-      detail = '';
-    }
+    // Short human string only; never echo the response body (T16).
+    const detail = `${status} ${STATUS_CODES[status] || response.statusText || ''}`.trim();
+    try { await response.body?.cancel(); } catch { /* ignore */ }
 
     return {
       ok: true,
@@ -102,7 +105,7 @@ export async function checkPulse(rawUrl, opts = {}) {
         status: 'DEAD',
         cause,
         httpStatus: status,
-        detail: detail || response.statusText || '',
+        detail,
       },
     };
   } catch (err) {

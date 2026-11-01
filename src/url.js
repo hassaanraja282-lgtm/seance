@@ -1,19 +1,23 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
+// ---------------------------------------------------------------------------
+// Syntax validation — no DNS, safe to call on any URL
+// ---------------------------------------------------------------------------
+
 /**
- * Validate a user-provided URL for safe outbound fetching.
+ * Validate URL syntax without performing any DNS lookups.
  *
- * Rules (see .kiro/steering/security.md):
+ * Rules:
  *  - scheme must be http or https
  *  - no userinfo (user:pass@)
- *  - no localhost / private / loopback / link-local / metadata IPs
- *  - DNS resolution check: resolve hostname, reject if any resolved IP is blocked
+ *  - no localhost / literal private / loopback / link-local / metadata IPs
+ *  - no blocked literal hostnames (localhost, 0.0.0.0, metadata.google.internal)
  *
  * @param {string} raw - the raw URL string from the user
- * @returns {Promise<{ ok: true, url: URL } | { ok: false, reason: string }>}
+ * @returns {{ ok: true, url: URL } | { ok: false, reason: string }}
  */
-export async function validateUrl(raw) {
+export function validateUrlSyntax(raw) {
   if (typeof raw !== 'string' || raw.length === 0) {
     return { ok: false, reason: 'Invalid or unsafe URL' };
   }
@@ -35,7 +39,8 @@ export async function validateUrl(raw) {
     return { ok: false, reason: 'Invalid or unsafe URL' };
   }
 
-  const hostname = parsed.hostname;
+  // WHATWG URL keeps IPv6 literals bracketed ("[::1]"); strip them so isIP() sees the address.
+  const hostname = parsed.hostname.replace(/^\[(.*)\]$/, '$1');
   if (!hostname) {
     return { ok: false, reason: 'Invalid or unsafe URL' };
   }
@@ -56,27 +61,101 @@ export async function validateUrl(raw) {
     if (isBlockedIP(hostname, ipType)) {
       return { ok: false, reason: 'Invalid or unsafe URL' };
     }
-  } else {
-    // DNS resolution check — reject if any resolved IP is blocked
-    let addresses;
-    try {
-      addresses = await lookup(hostname, { all: true });
-    } catch {
-      // DNS failure is a rejection for safety
-      return { ok: false, reason: 'Invalid or unsafe URL' };
-    }
-    if (addresses.length === 0) {
-      return { ok: false, reason: 'Invalid or unsafe URL' };
-    }
-    for (const addr of addresses) {
-      const family = addr.family === 6 ? 6 : 4;
-      if (isBlockedIP(addr.address, family)) {
-        return { ok: false, reason: 'Invalid or unsafe URL' };
-      }
-    }
   }
 
   return { ok: true, url: parsed };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch validation — syntax + DNS resolution (used by pulse only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate a URL for safe outbound fetching, including DNS resolution.
+ *
+ * Extends validateUrlSyntax with a DNS check: resolves the hostname and
+ * rejects if any resolved IP is in a blocked range. A DNS failure
+ * (ENOTFOUND/EAI_AGAIN) is NOT treated as unsafe — it returns
+ * { ok: false, reason: 'dns_failure' } so the caller (pulse) can report
+ * 200 DEAD instead of 400.
+ *
+ * @param {string} raw - the raw URL string from the user
+ * @param {{ dnsLookup?: function }} [opts] - optional DNS lookup override (for testing)
+ * @returns {Promise<{ ok: true, url: URL } | { ok: false, reason: string }>}
+ */
+export async function validateUrlForFetch(raw, opts = {}) {
+  const lookupFn = opts.dnsLookup ?? lookup;
+
+  const syntax = validateUrlSyntax(raw);
+  if (!syntax.ok) {
+    return syntax;
+  }
+
+  const hostname = syntax.url.hostname.replace(/^\[(.*)\]$/, '$1');
+
+  // Literal IPs are already checked in syntax validation — no DNS needed
+  const ipType = isIP(hostname);
+  if (ipType) {
+    return syntax;
+  }
+
+  // DNS resolution check
+  let addresses;
+  try {
+    addresses = await lookupFn(hostname, { all: true });
+  } catch {
+    // DNS failure — not a safety issue, the domain is just dead
+    return { ok: false, reason: 'dns_failure' };
+  }
+
+  if (!addresses || addresses.length === 0) {
+    return { ok: false, reason: 'dns_failure' };
+  }
+
+  for (const addr of addresses) {
+    const family = addr.family === 6 ? 6 : 4;
+    const category = blockedCategory(addr.address, family);
+    if (category) {
+      // Log the blocked resolution for diagnostics (no secrets)
+      console.error(`[SSRF] Blocked resolution: ${hostname} -> ${addr.address} (${category})`);
+      return { ok: false, reason: 'Invalid or unsafe URL' };
+    }
+  }
+
+  return { ok: true, url: syntax.url };
+}
+
+/**
+ * Backward-compatible alias for validateUrlForFetch.
+ * @deprecated Use validateUrlForFetch or validateUrlSyntax directly.
+ */
+export async function validateUrl(raw, opts = {}) {
+  return validateUrlForFetch(raw, opts);
+}
+
+// ---------------------------------------------------------------------------
+// IP blocking
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine the category of a blocked IP address.
+ * @param {string} ip - the IP address string
+ * @param {4|6} [family] - address family (4 or 6), auto-detected if omitted
+ * @returns {string|null} - category string if blocked, null if safe
+ */
+export function blockedCategory(ip, family) {
+  if (!family) {
+    family = isIP(ip);
+  }
+
+  if (family === 4) {
+    return blockedIPv4Category(ip);
+  }
+  if (family === 6) {
+    return blockedIPv6Category(ip);
+  }
+  // Unknown family — block to be safe
+  return 'unknown';
 }
 
 /**
@@ -86,83 +165,71 @@ export async function validateUrl(raw) {
  * @returns {boolean}
  */
 export function isBlockedIP(ip, family) {
-  if (!family) {
-    family = isIP(ip);
-  }
-
-  if (family === 4) {
-    return isBlockedIPv4(ip);
-  }
-  if (family === 6) {
-    return isBlockedIPv6(ip);
-  }
-  // Unknown family — block to be safe
-  return true;
+  return blockedCategory(ip, family) !== null;
 }
 
 /**
  * @param {string} ip
- * @returns {boolean}
+ * @returns {string|null}
  */
-function isBlockedIPv4(ip) {
+function blockedIPv4Category(ip) {
   const parts = ip.split('.').map(Number);
   if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) {
-    return true; // malformed → block
+    return 'malformed'; // malformed → block
   }
   const [a, b] = parts;
 
   // 127.0.0.0/8
-  if (a === 127) return true;
+  if (a === 127) return 'loopback';
   // 10.0.0.0/8
-  if (a === 10) return true;
+  if (a === 10) return 'private (10/8)';
   // 172.16.0.0/12
-  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 172 && b >= 16 && b <= 31) return 'private (172.16/12)';
   // 192.168.0.0/16
-  if (a === 192 && b === 168) return true;
+  if (a === 192 && b === 168) return 'private (192.168/16)';
   // 169.254.0.0/16 (link-local)
-  if (a === 169 && b === 254) return true;
+  if (a === 169 && b === 254) return 'link-local';
   // 0.0.0.0
-  if (a === 0 && parts[1] === 0 && parts[2] === 0 && parts[3] === 0) return true;
-  // 100.64.0.0/10 (carrier-grade NAT) — block to be safe
-  if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 0 && parts[1] === 0 && parts[2] === 0 && parts[3] === 0) return 'unspecified';
+  // 100.64.0.0/10 (carrier-grade NAT)
+  if (a === 100 && b >= 64 && b <= 127) return 'carrier-grade NAT';
 
-  return false;
+  return null;
 }
 
 /**
  * @param {string} ip
- * @returns {boolean}
+ * @returns {string|null}
  */
-function isBlockedIPv6(ip) {
+function blockedIPv6Category(ip) {
   const addr = ip.toLowerCase();
 
   // ::1 loopback
-  if (addr === '::1') return true;
+  if (addr === '::1') return 'loopback';
   // :: (unspecified)
-  if (addr === '::') return true;
+  if (addr === '::') return 'unspecified';
 
   // fc00::/7 (unique local)
   // fe80::/10 (link-local)
-  // Normalize to check prefixes
   const expanded = expandIPv6(addr);
-  if (!expanded) return true; // malformed → block
+  if (!expanded) return 'malformed'; // malformed → block
 
   const firstGroup = parseInt(expanded.split(':')[0], 16);
   const firstByte = (firstGroup >> 8) & 0xff;  // top 8 bits of first group
   const secondByte = firstGroup & 0xff;         // lower 8 bits of first group
 
   // fc00::/7 — first 7 bits are 1111 110x (first byte 0xfc or 0xfd)
-  if ((firstByte & 0xfe) === 0xfc) return true;
+  if ((firstByte & 0xfe) === 0xfc) return 'unique local (fc00::/7)';
   // fe80::/10 — first 10 bits: first byte 0xfe, top 2 bits of second byte are 10
-  if (firstByte === 0xfe && (secondByte & 0xc0) === 0x80) return true;
+  if (firstByte === 0xfe && (secondByte & 0xc0) === 0x80) return 'link-local (fe80::/10)';
 
   // IPv4-mapped (::ffff:x.x.x.x)
   const v4match = addr.match(/::ffff:(\d+\.\d+\.\d+\.\d+)/);
   if (v4match) {
-    return isBlockedIPv4(v4match[1]);
+    return blockedIPv4Category(v4match[1]);
   }
 
-  return false;
+  return null;
 }
 
 /**
@@ -200,6 +267,10 @@ function expandIPv6(addr) {
   // Pad each group to 4 hex digits
   return parts.map((p) => p.padStart(4, '0')).join(':');
 }
+
+// ---------------------------------------------------------------------------
+// Timestamp validation
+// ---------------------------------------------------------------------------
 
 /**
  * Validate a 14-digit CDX timestamp (yyyyMMddHHmmss).

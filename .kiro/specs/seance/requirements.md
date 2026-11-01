@@ -129,3 +129,6 @@ AC-1.3) to every user-provided URL before any outbound fetch.
 
 **AC-7.4 (US7)** The `GET /api/health` endpoint shall return HTTP 200 and a JSON
 body `{ status: 'ok' }` without requiring any API key.
+
+### AC-1.5 (added in T16)
+WHEN the target hostname does not resolve (ENOTFOUND/EAI_AGAIN) THE SYSTEM SHALL report the page DEAD with cause `dns_failure` (HTTP 200), and SHALL still allow snapshot lookup and resurrection for that URL.

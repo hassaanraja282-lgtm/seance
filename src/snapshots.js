@@ -1,4 +1,4 @@
-import { validateUrl } from './url.js';
+import { validateUrlSyntax } from './url.js';
 
 /**
  * Default timeout for CDX API calls (ms).
@@ -23,7 +23,7 @@ export async function getSnapshots(rawUrl, opts = {}) {
   const fetchFn = opts.fetch ?? globalThis.fetch;
   const timeout = opts.timeout ?? SNAPSHOTS_TIMEOUT;
 
-  const validation = await validateUrl(rawUrl);
+  const validation = validateUrlSyntax(rawUrl);
   if (!validation.ok) {
     return { ok: false, reason: validation.reason, code: 400 };
   }

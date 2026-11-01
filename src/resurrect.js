@@ -1,4 +1,4 @@
-import { validateUrl, isValidTimestamp } from './url.js';
+import { validateUrlSyntax, isValidTimestamp } from './url.js';
 import { LRUCache } from './cache.js';
 import { extractContent, extractText } from './extract.js';
 import { sanitizeHtml } from './sanitize.js';
@@ -56,7 +56,7 @@ export async function resurrect(rawUrl, ts, opts = {}) {
   const timeout = opts.timeout ?? RESURRECT_TIMEOUT;
 
   // Validate URL
-  const validation = await validateUrl(rawUrl);
+  const validation = validateUrlSyntax(rawUrl);
   if (!validation.ok) {
     return { ok: false, reason: validation.reason, code: 400 };
   }
