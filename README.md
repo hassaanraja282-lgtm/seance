@@ -1,6 +1,6 @@
 # Séance 🔮🕯️
 
-**Live:** https://seance-a6ag.onrender.com · **Kiroween 2026 — Resurrection category** · MIT
+**Live:** https://seance-a6ag.onrender.com · **Demo video:** https://youtu.be/CcU-MdIMzPc · **Kiroween 2026 — Resurrection category** · MIT
 
 Resurrect dead URLs via the Internet Archive's Wayback Machine.
 
